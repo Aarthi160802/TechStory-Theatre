@@ -1,7 +1,8 @@
 # TechStory Theatre
 
-### Video Demo
-(https://youtu.be/2LioVSmjW-A)
+## Demo
+
+[![FocusGuard Demo](https://img.youtube.com/vi/JZSCxlQrJSI/0.jpg)](https://youtu.be/2LioVSmjW-A)
 
 ## Overview
 TechStory Theatre is an interactive, LLM-powered entertainment app where AI-driven characters with unique personalities interact in realistic workplace scenarios. Users can watch, configure, and even participate in these conversations, making it a fun and educational tool for understanding team dynamics, communication, and workplace culture.
