@@ -1,3 +1,12 @@
+## Demo Video
+
+[![Watch the demo on YouTube](https://img.youtube.com/vi/2LioVSmjW-A/0.jpg)](https://youtu.be/2LioVSmjW-A)
+
+# Demo Screenshot
+
+![TechStory Theatre Backend Screenshot](../assets/techstory_theatre_image.png)
+
+<!-- Place your backend screenshot at assets/backend_demo.jpg in the project root. To use a different image or filename, change the path above. -->
 # Entertainment App Backend
 
 Python FastAPI backend for the LLM-powered entertainment app.
