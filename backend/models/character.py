@@ -44,6 +44,7 @@ class Character:
     personality: Optional[str] = None
     model_override: Optional[str] = None
     temperature: float = 0.9
+    voice: Optional[str] = None
     
     def __post_init__(self):
         """Validate personality traits are in valid range."""
@@ -147,6 +148,7 @@ class Character:
             "personality_traits": {k.value: v for k, v in self.personality_traits.items()},
             "model_override": self.model_override,
             "temperature": self.temperature,
+            "voice": self.voice,
         }
     
     @classmethod
@@ -173,4 +175,5 @@ class Character:
             personality=data.get("personality"),
             model_override=data.get("model_override"),
             temperature=data.get("temperature", 0.9),
+            voice=data.get("voice"),
         )

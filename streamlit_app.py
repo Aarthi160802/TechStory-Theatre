@@ -7,8 +7,17 @@ import streamlit as st
 import requests
 import json
 import os
+import hashlib
+import tempfile
 from typing import Dict, List, Optional
 from datetime import datetime
+
+try:
+    import edge_tts
+    import asyncio
+    TTS_AVAILABLE = True
+except ImportError:
+    TTS_AVAILABLE = False
 
 # Page Configuration
 st.set_page_config(
@@ -60,6 +69,104 @@ SCENARIO_SUGGESTIONS = {
         "Gossip about someone's personal life spreads in the office"
     ]
 }
+
+# ============================================================================
+# TTS VOICE CONFIG — each character gets a unique voice + rate/pitch
+# ============================================================================
+
+# edge-tts voices:
+#   en-US-GuyNeural      = American male (deep)
+#   en-US-JennyNeural    = American female
+#   en-IN-PrabhatNeural  = Indian male
+#   en-IN-NeerjaExpressiveNeural = Indian female (expressive)
+# rate/pitch tweaks make same base voice sound distinct per character.
+
+CHARACTER_VOICE_CONFIG = {
+    "Krish Sharma":  {"voice": "en-US-GuyNeural",                "rate": "+0%",  "pitch": "+0Hz"},   # US male, deep, CEO authority
+    "Divya Singh":   {"voice": "en-US-JennyNeural",              "rate": "+0%",  "pitch": "+0Hz"},   # US female, soft
+    "Swetha Patel":  {"voice": "en-IN-PrabhatNeural",            "rate": "+10%", "pitch": "+3Hz"},   # Indian male, energetic/fast
+    "Vishnu Kumar":  {"voice": "en-IN-PrabhatNeural",            "rate": "-5%",  "pitch": "-2Hz"},   # Indian male, calm/steady
+    "Aadya Saxena":  {"voice": "en-IN-NeerjaExpressiveNeural",   "rate": "+15%", "pitch": "+0Hz"},   # Indian female, young/quick
+    "Ramesh Kumar":  {"voice": "en-IN-PrabhatNeural",            "rate": "-20%", "pitch": "-5Hz"},   # Indian male, elder/slow
+}
+
+DEFAULT_VOICE_CONFIG = {"voice": "en-IN-PrabhatNeural", "rate": "+0%", "pitch": "+0Hz"}
+
+
+async def _generate_audio_async(messages: list, combined_path: str) -> str:
+    """Generate per-character audio clips and concatenate into one MP3."""
+    combined_bytes = bytearray()
+
+    for msg in messages:
+        speaker = msg.get("speaker_name", "Unknown")
+        content = msg.get("content", "")
+        if not content.strip():
+            continue
+
+        cfg = CHARACTER_VOICE_CONFIG.get(speaker, DEFAULT_VOICE_CONFIG)
+        speech_text = f"{speaker} says: {content}"
+
+        communicate = edge_tts.Communicate(
+            speech_text,
+            voice=cfg["voice"],
+            rate=cfg["rate"],
+            pitch=cfg["pitch"],
+        )
+        # Collect audio bytes from the stream
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                combined_bytes.extend(chunk["data"])
+
+    with open(combined_path, "wb") as f:
+        f.write(combined_bytes)
+
+    return combined_path
+
+
+def _generate_combined_audio(messages: list) -> Optional[str]:
+    """Generate a single combined audio file for all messages with character-appropriate voices."""
+    if not messages:
+        return None
+
+    # Create a cache key from all messages combined
+    all_text = "".join(f"{m.get('speaker_name','')}{m.get('content','')}" for m in messages)
+    cache_key = hashlib.md5(all_text.encode()).hexdigest()
+    cache_dir = os.path.join(tempfile.gettempdir(), "techstory_tts")
+    os.makedirs(cache_dir, exist_ok=True)
+    combined_path = os.path.join(cache_dir, f"scene_{cache_key}.mp3")
+
+    # Return cached file if it exists
+    if os.path.exists(combined_path):
+        return combined_path
+
+    try:
+        # Run async TTS in a fresh event loop on a background thread
+        # to avoid conflicts with Streamlit's own event loop
+        import threading
+        result = [None, None]  # [success, error]
+
+        def _run():
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(_generate_audio_async(messages, combined_path))
+                loop.close()
+                result[0] = True
+            except Exception as ex:
+                result[1] = ex
+
+        t = threading.Thread(target=_run)
+        t.start()
+        t.join(timeout=120)
+
+        if result[1]:
+            st.warning(f"Audio generation failed: {result[1]}")
+            return None
+        return combined_path
+    except Exception as e:
+        st.warning(f"Audio generation failed: {e}")
+        return None
+
 
 # ============================================================================
 # SESSION STATE INITIALIZATION
@@ -117,8 +224,16 @@ def start_conversation(scenario: str, character_names: List[str], turn_order: Li
         if response.status_code == 200:
             return response.json()
         else:
-            error_msg = response.json().get("detail", "Unknown error") if response.content else response.text
-            st.error(f"API Error {response.status_code}: {error_msg}")
+            try:
+                err_data = response.json()
+                error_msg = err_data.get("detail") or err_data.get("error") or response.text
+            except Exception:
+                error_msg = response.text
+            # Show user-friendly message for quota errors
+            if "quota" in str(error_msg).lower() or "429" in str(error_msg):
+                st.error("⏳ API quota limit reached. Please wait a minute and try again, or use a different API key.")
+            else:
+                st.error(f"API Error {response.status_code}: {error_msg}")
             return None
     except requests.exceptions.Timeout:
         st.error("Request timed out - the conversation is taking too long to generate")
@@ -381,8 +496,14 @@ def simulation_screen():
         if not messages:
             st.info("No messages yet - the scene is beginning...")
         else:
+            # Single play button for entire scene audio
+            if TTS_AVAILABLE:
+                audio_file = _generate_combined_audio(messages)
+                if audio_file and os.path.exists(audio_file):
+                    st.audio(audio_file, format='audio/mp3')
+
             # Display character messages in a nice format
-            for msg in messages:
+            for idx, msg in enumerate(messages):
                 with st.chat_message(msg.get("speaker_name", "Unknown")):
                     st.write(msg["content"])
                     st.caption(f"_{msg.get('timestamp', 'just now')}_")

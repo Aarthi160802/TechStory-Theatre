@@ -25,7 +25,8 @@
         "intelligence": 80,
         "humor": 50
       },
-      "temperature": 0.8
+      "temperature": 0.8,
+      "voice": "male, deep, neutral American English"
     },
     {
       "name": "Swetha Patel",
@@ -44,7 +45,8 @@
         "intelligence": 65,
         "humor": 85
       },
-      "temperature": 0.85
+      "temperature": 0.85,
+      "voice": "male, energetic, Indian English"
     },
     {
       "name": "Vishnu Kumar",
@@ -63,7 +65,8 @@
         "intelligence": 85,
         "humor": 40
       },
-      "temperature": 0.7
+      "temperature": 0.7,
+      "voice": "male, calm, Indian English"
     },
     {
       "name": "Aadya Saxena",
@@ -82,7 +85,8 @@
         "intelligence": 90,
         "humor": 85
       },
-      "temperature": 0.8
+      "temperature": 0.8,
+      "voice": "female, young, Indian English"
     },
     {
       "name": "Divya Singh",
@@ -101,7 +105,8 @@
         "intelligence": 80,
         "humor": 60
       },
-      "temperature": 0.75
+      "temperature": 0.75,
+      "voice": "female, soft, neutral American English"
     },
     {
       "name": "Ramesh Kumar",
@@ -120,7 +125,8 @@
         "intelligence": 75,
         "humor": 80
       },
-      "temperature": 0.8
+      "temperature": 0.8,
+      "voice": "male, elder, Indian English"
     }
   ]
 }

@@ -154,13 +154,7 @@ async def get_characters():
     """Get all available characters."""
     return {
         "characters": [
-            {
-                "name": name,
-                "base_prompt_preview": char.base_system_prompt[:100] + "...",
-                "personality_traits": {
-                    k.value: v for k, v in char.personality_traits.items()
-                },
-            }
+            char.to_dict()
             for name, char in CHARACTERS.items()
         ]
     }
@@ -331,10 +325,14 @@ async def health_check():
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
     """Handle HTTP exceptions."""
-    return {
-        "error": exc.detail,
-        "status_code": exc.status_code,
-    }
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": exc.detail,
+            "status_code": exc.status_code,
+        },
+    )
 
 
 if __name__ == "__main__":
